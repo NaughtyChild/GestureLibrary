@@ -4,14 +4,20 @@ import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.Paint;
 import android.graphics.Paint.Style;
+import android.os.Handler;
+import android.os.Message;
 import android.util.AttributeSet;
+import android.util.Log;
 import android.view.HapticFeedbackConstants;
 import android.view.MotionEvent;
 import android.view.View;
 import android.widget.Toast;
 
+import androidx.annotation.NonNull;
+
 import java.util.ArrayList;
 import java.util.List;
+import java.util.logging.LogRecord;
 
 /**
  * @Title: LockPatternView
@@ -82,6 +88,21 @@ public class LockPatternView extends View {
         this.selectMidPaintColor = selectMidPaintColor;
     }
 
+    Handler handler = new Handler() {
+        @Override
+        public void handleMessage(@NonNull Message msg) {
+            Toast.makeText(context, "重置", Toast.LENGTH_SHORT).show();
+            sCells.clear();
+            for (Cell[] mCell : mCells) {
+                for (Cell cell : mCell) {
+                    cell.status = STATUS.STATE_NORMAL;
+                }
+            }
+            mode = DisplayMode.DEFAULT;
+            invalidate();
+        }
+    };
+
     /**
      * initialize
      */
@@ -129,39 +150,45 @@ public class LockPatternView extends View {
 
     @Override
     public boolean onTouchEvent(MotionEvent event) {
-        if (mode == DisplayMode.UP) return true;
 
         float ex = event.getX();
         float ey = event.getY();
         switch (event.getAction()) {
+
             case MotionEvent.ACTION_DOWN:
                 handleActionDown(ex, ey);
+                Log.d("LockPatternView", "onTouchEvent:ACTION_DOWN ");
                 break;
             case MotionEvent.ACTION_MOVE:
+                Log.d("LockPatternView", "onTouchEvent:ACTION_MOVE ");
+
                 handleActionMove(ex, ey);
                 break;
             case MotionEvent.ACTION_UP:
+                Log.d("LockPatternView", "onTouchEvent:ACTION_UP ");
                 handleActionUp();
                 break;
         }
         return true;
     }
 
-    public void restMode() {
-        postDelayed(new Runnable() {
-            @Override
-            public void run() {
-                Toast.makeText(context, "重置", Toast.LENGTH_SHORT).show();
-                sCells.clear();
-                for (Cell[] mCell : mCells) {
-                    for (Cell cell : mCell) {
-                        cell.status = STATUS.STATE_NORMAL;
-                    }
-                }
-                mode = DisplayMode.DEFAULT;
-                postInvalidate();
-            }
-        }, 2000);
+    public void resetMode() {
+        Log.d("LockPatternView", "restMode: ");
+        handler.sendEmptyMessage(1);
+//        postDelayed(new Runnable() {
+//            @Override
+//            public void run() {
+//                Toast.makeText(context, "重置", Toast.LENGTH_SHORT).show();
+//                sCells.clear();
+//                for (Cell[] mCell : mCells) {
+//                    for (Cell cell : mCell) {
+//                        cell.status = STATUS.STATE_NORMAL;
+//                    }
+//                }
+//                mode = DisplayMode.DEFAULT;
+//                invalidate();
+//            }
+//        }, 1000);
     }
 
     private void drawUPResult(Canvas canvas) {
@@ -180,8 +207,21 @@ public class LockPatternView extends View {
                         errorPaint.setStyle(Style.FILL);
                         canvas.drawCircle(mCells[i][j].getX(), mCells[i][j].getY(), this.cellInnerRadius, this.errorPaint);
                         break;
+                    case STATE_CHECK:
+                        selectMidPaint.setStyle(Style.FILL);
+                        canvas.drawCircle(mCells[i][j].getX(), mCells[i][j].getY(), this.middleRadius, this.selectMidPaint);
+                        selectPaint.setStyle(Style.FILL);
+                        canvas.drawCircle(mCells[i][j].getX(), mCells[i][j].getY(), this.cellInnerRadius, this.selectPaint);
+                        break;
                     case STATE_CHECK_SUCCESS:
                         // TODO: 2019/11/1
+                        //判定正确时候
+                        errorMiddleCellPint.setStyle(Style.FILL);
+                        errorMiddleCellPint.setColor(context.getResources().getColor(R.color.limegreen));
+                        canvas.drawCircle(mCells[i][j].getX(), mCells[i][j].getY(), this.middleRadius, this.errorMiddleCellPint);
+                        errorPaint.setStyle(Style.FILL);
+                        errorPaint.setColor(context.getResources().getColor(R.color.limegreen));
+                        canvas.drawCircle(mCells[i][j].getX(), mCells[i][j].getY(), this.cellInnerRadius, this.errorPaint);
                         break;
                 }
             }
@@ -419,7 +459,6 @@ public class LockPatternView extends View {
         Cell cell = checkSelectCell(ex, ey);
         if (cell != null) {
             addSelectedCell(cell);
-
         }
         // this.setMode(DisplayMode.DEFAULT);
         handleStealthMode();
@@ -465,15 +504,13 @@ public class LockPatternView extends View {
      * handle action up
      */
     private void handleActionUp() {
-        mode = DisplayMode.UP;
+        // mode = DisplayMode.UP;
         isActionMove = false;
         isActionUp = true;
         isActionDown = false;
-        // this.setMode(DisplayMode.NORMAL);
-        handleHapticFeedback();
-        handleStealthMode();
         if (this.patterListener != null) {
             this.patterListener.onPatternComplete(sCells);
+            mode = DisplayMode.UP;
         }
     }
 
@@ -528,55 +565,6 @@ public class LockPatternView extends View {
         return mode;
     }
 
-    public void setMode(DisplayMode mode) {
-        this.mode = mode;
-//        switch (mode) {
-//            case DEFAULT:
-//                for (Cell cell : sCells) {
-//                    cell.setStatus(STATUS.STATE_NORMAL);
-//                }
-//                sCells.clear();
-//                break;
-//            case NORMAL:
-//                break;
-//            case RIGHT:
-//                break;
-//            case DISABLE:
-//                break;
-//            case ERROR:
-//                for (Cell cell : sCells) {
-//                    cell.setStatus(STATUS.STATE_CHECK_ERROR);
-//                }
-//                break;
-//        }
-//        this.handleStealthMode();
-    }
-
-    /**
-     * set pattern
-     *
-     * @param mode (details see the DisplayMode)
-     */
-    @Deprecated
-    public void setPattern(DisplayMode mode) {
-        switch (mode) {
-            case DEFAULT:
-                for (Cell cell : sCells) {
-                    cell.setStatus(STATUS.STATE_NORMAL);
-                }
-                sCells.clear();
-                break;
-            case NORMAL:
-                break;
-            case ERROR:
-                for (Cell cell : sCells) {
-                    cell.setStatus(STATUS.STATE_CHECK_ERROR);
-                }
-                break;
-        }
-        this.handleStealthMode();
-    }
-
     /**
      * handle the stealth mode (if true: do not post invalidate; false: post invalidate)
      */
@@ -629,13 +617,9 @@ public class LockPatternView extends View {
      */
     public enum DisplayMode {
         DEFAULT,
-        //show selected pattern normal
-        NORMAL,
         //show selected pattern error
         MOVING,
         //show default pattern (the default pattern is initialize status)
-        ERROR,
-        //show selected pattern right
         UP,
         //show selected pattern error
         DISABLE;

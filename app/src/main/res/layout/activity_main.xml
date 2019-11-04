@@ -5,11 +5,26 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:gravity="center"
+    android:orientation="vertical"
     tools:context=".MainActivity">
+
+    <TextView
+        android:id="@+id/tipTv"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="10dp"
+        android:textColor="@color/black"
+        android:textSize="20sp"
+        tools:text="设置手势密码" />
 
     <cn.naughtyChild.guesture.LockPatternView
         android:id="@+id/lockView"
         android:layout_width="300dp"
         android:layout_height="300dp" />
 
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:onClick="resetPassWord"
+        android:text="重置" />
 </LinearLayout>
