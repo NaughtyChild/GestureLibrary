@@ -87,22 +87,6 @@ public class LockPatternView extends View {
     public void setSelectMidPaintColor(int selectMidPaintColor) {
         this.selectMidPaintColor = selectMidPaintColor;
     }
-
-    Handler handler = new Handler() {
-        @Override
-        public void handleMessage(@NonNull Message msg) {
-            Toast.makeText(context, "重置", Toast.LENGTH_SHORT).show();
-            sCells.clear();
-            for (Cell[] mCell : mCells) {
-                for (Cell cell : mCell) {
-                    cell.status = STATUS.STATE_NORMAL;
-                }
-            }
-            mode = DisplayMode.DEFAULT;
-            invalidate();
-        }
-    };
-
     /**
      * initialize
      */
@@ -130,7 +114,7 @@ public class LockPatternView extends View {
 
     @Override
     protected void onDraw(Canvas canvas) {
-        super.onDraw(canvas);
+        Log.d("LockPatternView", "onDraw: ");
         switch (mode) {
             case DEFAULT:
                 //初始状态绘制
@@ -174,21 +158,21 @@ public class LockPatternView extends View {
 
     public void resetMode() {
         Log.d("LockPatternView", "restMode: ");
-        handler.sendEmptyMessage(1);
-//        postDelayed(new Runnable() {
-//            @Override
-//            public void run() {
-//                Toast.makeText(context, "重置", Toast.LENGTH_SHORT).show();
-//                sCells.clear();
-//                for (Cell[] mCell : mCells) {
-//                    for (Cell cell : mCell) {
-//                        cell.status = STATUS.STATE_NORMAL;
-//                    }
-//                }
-//                mode = DisplayMode.DEFAULT;
-//                invalidate();
-//            }
-//        }, 1000);
+//        handler.sendEmptyMessage(1);
+        postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                Toast.makeText(context, "重置", Toast.LENGTH_SHORT).show();
+                sCells.clear();
+                for (Cell[] mCell : mCells) {
+                    for (Cell cell : mCell) {
+                        cell.status = STATUS.STATE_NORMAL;
+                    }
+                }
+                mode = DisplayMode.DEFAULT;
+                invalidate();
+            }
+        }, 1000);
     }
 
     private void drawUPResult(Canvas canvas) {
@@ -569,6 +553,7 @@ public class LockPatternView extends View {
      * handle the stealth mode (if true: do not post invalidate; false: post invalidate)
      */
     private void handleStealthMode() {
+        Log.d("LockPatternView", "handleStealthMode: ");
         if (!mInStealthMode) {
             this.postInvalidate();
         }

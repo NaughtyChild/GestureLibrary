@@ -49,5 +49,7 @@ class MainActivity : AppCompatActivity() {
 
     fun resetPassWord(view: View) {
         passWord = ""
+        setFirst=true
+        tipTv.text = "请设置手势密码"
     }
 }
