@@ -105,7 +105,6 @@ public class LockPatternView extends View {
         }
         this.initCellSize();
         this.set9CellsSize();
-        //this.invalidate();
     }
 
     @Override
@@ -126,11 +125,12 @@ public class LockPatternView extends View {
                 drawNothing(canvas);
                 break;
         }
-        // this.drawToCanvas(canvas);
     }
 
     @Override
     public boolean onTouchEvent(MotionEvent event) {
+        if (mode == DisplayMode.UP) return true;
+
         float ex = event.getX();
         float ey = event.getY();
         switch (event.getAction()) {
@@ -148,19 +148,17 @@ public class LockPatternView extends View {
     }
 
     public void restMode() {
-
         postDelayed(new Runnable() {
             @Override
             public void run() {
                 Toast.makeText(context, "重置", Toast.LENGTH_SHORT).show();
                 sCells.clear();
-                mode = DisplayMode.DEFAULT;
-                for (int i = 0; i < mCells.length; i++) {
-                    for (int j = 0; j < mCells[i].length; j++) {
-                        Cell cell = mCells[i][j];
+                for (Cell[] mCell : mCells) {
+                    for (Cell cell : mCell) {
                         cell.status = STATUS.STATE_NORMAL;
                     }
                 }
+                mode = DisplayMode.DEFAULT;
                 postInvalidate();
             }
         }, 2000);
@@ -428,7 +426,6 @@ public class LockPatternView extends View {
         // handleHapticFeedback();
     }
 
-
     public void handleGestureSuccess() {
         for (Cell cell : sCells) {
             cell.setStatus(STATUS.STATE_CHECK_SUCCESS);
@@ -478,6 +475,10 @@ public class LockPatternView extends View {
         if (this.patterListener != null) {
             this.patterListener.onPatternComplete(sCells);
         }
+    }
+
+    private void disableGesture() {
+
     }
 
     /**
