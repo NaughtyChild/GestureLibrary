@@ -315,7 +315,7 @@ public class LockPatternView extends View {
         innerCirclePaint = new Paint();
         innerCirclePaint.setStyle(Style.FILL);
         innerCirclePaint.setAntiAlias(true);
-        innerCirclePaint.setStrokeWidth(5f);
+        innerCirclePaint.setStrokeWidth(3f);
 
         linePaint = new Paint();
         linePaint.setStyle(Style.FILL);
