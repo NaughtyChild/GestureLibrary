@@ -200,7 +200,6 @@ public class LockPatternView extends View {
                         canvas.drawCircle(mCells[i][j].getX(), mCells[i][j].getY(), this.cellInnerRadius, this.innerCirclePaint);
                         break;
                     case STATE_CHECK_SUCCESS:
-                        // TODO: 2019/11/1
                         //判定正确时候
                         middleCirclePaint.setColor(context.getResources().getColor(R.color.limegreen));
                         canvas.drawCircle(mCells[i][j].getX(), mCells[i][j].getY(), this.middleRadius, this.middleCirclePaint);
@@ -212,7 +211,6 @@ public class LockPatternView extends View {
         }
         drawLines(canvas);
     }
-
 
     private void drawMovingCircle(Canvas canvas) {
         for (int i = 0; i < mCells.length; i++) {
