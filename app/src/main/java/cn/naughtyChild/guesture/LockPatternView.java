@@ -4,8 +4,6 @@ import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.Paint;
 import android.graphics.Paint.Style;
-import android.os.Handler;
-import android.os.Message;
 import android.util.AttributeSet;
 import android.util.Log;
 import android.view.HapticFeedbackConstants;
@@ -13,11 +11,8 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.widget.Toast;
 
-import androidx.annotation.NonNull;
-
 import java.util.ArrayList;
 import java.util.List;
-import java.util.logging.LogRecord;
 
 /**
  * @Title: LockPatternView
@@ -28,23 +23,17 @@ import java.util.logging.LogRecord;
 public class LockPatternView extends View {
     private static final String TAG = "LockPatternView";
     private float movingX, movingY;
-    private boolean isActionMove = false;
-    private boolean isActionDown = false;//default action down is false
-    private boolean isActionUp = true;//default action up is true
     private int width, height;
     private int cellRadius, cellInnerRadius, middleRadius;
     //in stealth mode (default is false),if set true,the gesture is invisible
     private boolean mInStealthMode = false;
     //haptic feed back (default is true),if set true,it'll shake when gesture drawing.
     private boolean mEnableHapticFeedback = true;
-    //set delay time
-    private long delayTime = 600L;
     //set offset to the boundary
     private int offset = 10;//left and right spacing
-    private DisplayMode mode = DisplayMode.DEFAULT;//default  mode
-    private int outerCircleColor, selectColor, errorColor, errorMiddleColor, selectMidPaintColor;
-    //draw view used paint
-    private Paint outerCirclePaint, selectPaint, errorPaint, errorMiddleCellPint, selectMidPaint;
+    private DisplayMode mode = DisplayMode.NORMAL;//default  mode
+    private int outerCircleColor, selectInnerColor, errorInnerColor, errorMiddleColor, selectMiddleColor;
+    private Paint outerCirclePaint, middleCirclePaint, innerCirclePaint, linePaint;
     private Cell[][] mCells = new Cell[3][3];
     private List<Cell> sCells = new ArrayList<Cell>();
     private OnPatternListener patterListener;
@@ -72,29 +61,30 @@ public class LockPatternView extends View {
         this.outerCircleColor = outerCircleColor;
     }
 
-    public int getSelectColor() {
-        return selectColor;
+    public int getSelectInnerColor() {
+        return selectInnerColor;
     }
 
-    public void setSelectColor(int selectColor) {
-        this.selectColor = selectColor;
+    public void setSelectInnerColor(int selectInnerColor) {
+        this.selectInnerColor = selectInnerColor;
     }
 
-    public int getSelectMidPaintColor() {
-        return selectMidPaintColor;
+    public int getSelectMiddleColor() {
+        return selectMiddleColor;
     }
 
-    public void setSelectMidPaintColor(int selectMidPaintColor) {
-        this.selectMidPaintColor = selectMidPaintColor;
+    public void setSelectMiddleColor(int selectMiddleColor) {
+        this.selectMiddleColor = selectMiddleColor;
     }
+
     /**
      * initialize
      */
     private void init() {
         outerCircleColor = context.getResources().getColor(R.color.gray);
-        selectColor = context.getResources().getColor(R.color.mediumaquamarine);
-        selectMidPaintColor = context.getResources().getColor(R.color.darkgreen);
-        errorColor = context.getResources().getColor(R.color.indianred);
+        selectInnerColor = context.getResources().getColor(R.color.mediumaquamarine);
+        selectMiddleColor = context.getResources().getColor(R.color.darkgreen);
+        errorInnerColor = context.getResources().getColor(R.color.indianred);
         errorMiddleColor = context.getResources().getColor(R.color.palevioletred);
         this.init9Cells();
         this.initPaints();
@@ -116,20 +106,35 @@ public class LockPatternView extends View {
     protected void onDraw(Canvas canvas) {
         Log.d("LockPatternView", "onDraw: ");
         switch (mode) {
-            case DEFAULT:
+            case NORMAL:
                 //初始状态绘制
                 drawNormalCircle(canvas);
+                break;
+            case DOWN:
+                drawDownCircle(canvas);
                 break;
             case MOVING:
                 drawMovingCircle(canvas);
                 break;
-            case UP:
-                drawUPResult(canvas);
+            case SUCCESS:
+                drawSuccessResult(canvas);
                 break;
-            case DISABLE:
-                drawNothing(canvas);
+            case ERROR:
+                drawErrorResult(canvas);
                 break;
         }
+    }
+
+    private void drawDownCircle(Canvas canvas) {
+        drawMovingCircle(canvas);
+    }
+
+    private void drawErrorResult(Canvas canvas) {
+        drawUPResult(canvas);
+    }
+
+    private void drawSuccessResult(Canvas canvas) {
+        drawUPResult(canvas);
     }
 
     @Override
@@ -145,7 +150,6 @@ public class LockPatternView extends View {
                 break;
             case MotionEvent.ACTION_MOVE:
                 Log.d("LockPatternView", "onTouchEvent:ACTION_MOVE ");
-
                 handleActionMove(ex, ey);
                 break;
             case MotionEvent.ACTION_UP:
@@ -158,18 +162,16 @@ public class LockPatternView extends View {
 
     public void resetMode() {
         Log.d("LockPatternView", "restMode: ");
-//        handler.sendEmptyMessage(1);
         postDelayed(new Runnable() {
             @Override
             public void run() {
-                Toast.makeText(context, "重置", Toast.LENGTH_SHORT).show();
                 sCells.clear();
                 for (Cell[] mCell : mCells) {
                     for (Cell cell : mCell) {
                         cell.status = STATUS.STATE_NORMAL;
                     }
                 }
-                mode = DisplayMode.DEFAULT;
+                mode = DisplayMode.NORMAL;
                 invalidate();
             }
         }, 1000);
@@ -186,26 +188,24 @@ public class LockPatternView extends View {
                         break;
                     case STATE_CHECK_ERROR:
                         //判定错误时候
-                        errorMiddleCellPint.setStyle(Style.FILL);
-                        canvas.drawCircle(mCells[i][j].getX(), mCells[i][j].getY(), this.middleRadius, this.errorMiddleCellPint);
-                        errorPaint.setStyle(Style.FILL);
-                        canvas.drawCircle(mCells[i][j].getX(), mCells[i][j].getY(), this.cellInnerRadius, this.errorPaint);
+                        middleCirclePaint.setColor(errorMiddleColor);
+                        canvas.drawCircle(mCells[i][j].getX(), mCells[i][j].getY(), this.middleRadius, this.middleCirclePaint);
+                        innerCirclePaint.setColor(errorInnerColor);
+                        canvas.drawCircle(mCells[i][j].getX(), mCells[i][j].getY(), this.cellInnerRadius, this.innerCirclePaint);
                         break;
                     case STATE_CHECK:
-                        selectMidPaint.setStyle(Style.FILL);
-                        canvas.drawCircle(mCells[i][j].getX(), mCells[i][j].getY(), this.middleRadius, this.selectMidPaint);
-                        selectPaint.setStyle(Style.FILL);
-                        canvas.drawCircle(mCells[i][j].getX(), mCells[i][j].getY(), this.cellInnerRadius, this.selectPaint);
+                        middleCirclePaint.setColor(selectMiddleColor);
+                        canvas.drawCircle(mCells[i][j].getX(), mCells[i][j].getY(), this.middleRadius, this.middleCirclePaint);
+                        innerCirclePaint.setColor(errorInnerColor);
+                        canvas.drawCircle(mCells[i][j].getX(), mCells[i][j].getY(), this.cellInnerRadius, this.innerCirclePaint);
                         break;
                     case STATE_CHECK_SUCCESS:
                         // TODO: 2019/11/1
                         //判定正确时候
-                        errorMiddleCellPint.setStyle(Style.FILL);
-                        errorMiddleCellPint.setColor(context.getResources().getColor(R.color.limegreen));
-                        canvas.drawCircle(mCells[i][j].getX(), mCells[i][j].getY(), this.middleRadius, this.errorMiddleCellPint);
-                        errorPaint.setStyle(Style.FILL);
-                        errorPaint.setColor(context.getResources().getColor(R.color.limegreen));
-                        canvas.drawCircle(mCells[i][j].getX(), mCells[i][j].getY(), this.cellInnerRadius, this.errorPaint);
+                        middleCirclePaint.setColor(context.getResources().getColor(R.color.limegreen));
+                        canvas.drawCircle(mCells[i][j].getX(), mCells[i][j].getY(), this.middleRadius, this.middleCirclePaint);
+                        innerCirclePaint.setColor(context.getResources().getColor(R.color.limegreen));
+                        canvas.drawCircle(mCells[i][j].getX(), mCells[i][j].getY(), this.cellInnerRadius, this.innerCirclePaint);
                         break;
                 }
             }
@@ -224,10 +224,10 @@ public class LockPatternView extends View {
                         canvas.drawCircle(mCells[i][j].getX(), mCells[i][j].getY(), this.cellRadius, this.outerCirclePaint);
                         break;
                     case STATE_CHECK:
-                        selectMidPaint.setStyle(Style.FILL);
-                        canvas.drawCircle(mCells[i][j].getX(), mCells[i][j].getY(), this.middleRadius, this.selectMidPaint);
-                        selectPaint.setStyle(Style.FILL);
-                        canvas.drawCircle(mCells[i][j].getX(), mCells[i][j].getY(), this.cellInnerRadius, this.selectPaint);
+                        middleCirclePaint.setColor(selectMiddleColor);
+                        canvas.drawCircle(mCells[i][j].getX(), mCells[i][j].getY(), this.middleRadius, this.middleCirclePaint);
+                        innerCirclePaint.setColor(selectInnerColor);
+                        canvas.drawCircle(mCells[i][j].getX(), mCells[i][j].getY(), this.cellInnerRadius, this.innerCirclePaint);
                         break;
                 }
             }
@@ -242,74 +242,26 @@ public class LockPatternView extends View {
             for (int i = 1; i < sCells.size(); i++) {
                 Cell cell = sCells.get(i);
                 if (cell.getStatus() == STATUS.STATE_CHECK) {
-                    drawLineNotIncludeInnerCircle(tempCell, cell, canvas, selectPaint);
+                    drawLineNotIncludeInnerCircle(tempCell, cell, canvas, innerCirclePaint);
                 } else if (cell.getStatus() == STATUS.STATE_CHECK_ERROR) {
-                    drawLineNotIncludeInnerCircle(tempCell, cell, canvas, errorPaint);
+                    drawLineNotIncludeInnerCircle(tempCell, cell, canvas, innerCirclePaint);
                 }
                 tempCell = cell;
             }
-            if (isActionMove && !isActionUp) {
-                drawLineFollowFingerNotIncludeInner(tempCell, canvas, selectPaint);
+            if (mode == DisplayMode.MOVING) {
+                drawLineFollowFingerNotIncludeInner(tempCell, canvas, innerCirclePaint);
             }
         }
-    }
-
-
-    private void drawNothing(Canvas canvas) {
     }
 
     private void drawNormalCircle(Canvas canvas) {
         for (int i = 0; i < mCells.length; i++) {
             for (int j = 0; j < mCells[i].length; j++) {
                 //正常时候，绘制外圆
+                outerCirclePaint.setColor(outerCircleColor);
                 canvas.drawCircle(mCells[i][j].getX(), mCells[i][j].getY(), this.cellRadius, this.outerCirclePaint);
             }
         }
-    }
-
-
-    /**
-     * draw the view to canvas
-     *
-     * @param canvas
-     */
-    private void drawToCanvas(Canvas canvas) {
-     /*   for (int i = 0; i < mCells.length; i++) {
-            for (int j = 0; j < mCells[i].length; j++) {
-                //选中时候，绘制中间园
-                if (mCells[i][j].getStatus() == Cell.STATE_CHECK) {
-                    selectMidPaint.setStyle(Style.FILL);
-                    canvas.drawCircle(mCells[i][j].getX(), mCells[i][j].getY(), this.middleRadius, this.selectMidPaint);
-                    selectPaint.setStyle(Style.FILL);
-                    canvas.drawCircle(mCells[i][j].getX(), mCells[i][j].getY(), this.cellInnerRadius, this.selectPaint);
-                } else if (mCells[i][j].getStatus() == Cell.STATE_NORMAL) {
-                    //正常时候，绘制外圆
-                    canvas.drawCircle(mCells[i][j].getX(), mCells[i][j].getY(), this.cellRadius, this.outerCirclePaint);
-                } else if (mCells[i][j].getStatus() == Cell.STATE_CHECK_ERROR) {
-                    //判定错误时候
-                    errorMiddleCellPint.setStyle(Style.FILL);
-                    canvas.drawCircle(mCells[i][j].getX(), mCells[i][j].getY(), this.middleRadius, this.errorMiddleCellPint);
-                    errorPaint.setStyle(Style.FILL);
-                    canvas.drawCircle(mCells[i][j].getX(), mCells[i][j].getY(), this.cellInnerRadius, this.errorPaint);
-                }
-            }
-        }
-        if (sCells.size() > 0) {
-            //temporary cell: at the beginning the cell is the first of sCells
-            Cell tempCell = sCells.get(0);
-            for (int i = 1; i < sCells.size(); i++) {
-                Cell cell = sCells.get(i);
-                if (cell.getStatus() == Cell.STATE_CHECK) {
-                    drawLineNotIncludeInnerCircle(tempCell, cell, canvas, selectPaint);
-                } else if (cell.getStatus() == Cell.STATE_CHECK_ERROR) {
-                    drawLineNotIncludeInnerCircle(tempCell, cell, canvas, errorPaint);
-                }
-                tempCell = cell;
-            }
-            if (isActionMove && !isActionUp) {
-                drawLineFollowFingerNotIncludeInner(tempCell, canvas, selectPaint);
-            }
-        }*/
     }
 
     /**
@@ -353,25 +305,22 @@ public class LockPatternView extends View {
      */
     private void initPaints() {
         outerCirclePaint = new Paint();
-        outerCirclePaint.setColor(outerCircleColor);
         outerCirclePaint.setStyle(Style.FILL);
         outerCirclePaint.setAntiAlias(true);
-        selectPaint = new Paint();
-        selectPaint.setColor(selectColor);
-        selectPaint.setStrokeWidth(5.0f);
-        selectPaint.setStyle(Style.FILL);
-        selectPaint.setAntiAlias(true);
-        errorPaint = new Paint();
-        errorPaint.setColor(errorColor);
-        errorPaint.setStrokeWidth(5.0f);
-        errorPaint.setStyle(Style.FILL);
-        errorPaint.setAntiAlias(true);
-        errorMiddleCellPint = new Paint();
-        errorMiddleCellPint.setColor(errorMiddleColor);
-        errorMiddleCellPint.setAntiAlias(true);
-        selectMidPaint = new Paint();
-        selectMidPaint.setColor(outerCircleColor);
-        selectMidPaint.setAntiAlias(true);
+
+        middleCirclePaint = new Paint();
+        middleCirclePaint.setStyle(Style.FILL);
+        middleCirclePaint.setAntiAlias(true);
+
+        innerCirclePaint = new Paint();
+        innerCirclePaint.setStyle(Style.FILL);
+        innerCirclePaint.setAntiAlias(true);
+        innerCirclePaint.setStrokeWidth(5f);
+
+        linePaint = new Paint();
+        linePaint.setStyle(Style.FILL);
+        linePaint.setAntiAlias(true);
+        // TODO: 2019/11/5 1.修改划线为linePaint 2.修改各个默认选择和错误配色 3.配色支持设置和xml属性
     }
 
     /**
@@ -434,9 +383,7 @@ public class LockPatternView extends View {
      * @param ey
      */
     private void handleActionDown(float ex, float ey) {
-        isActionMove = false;
-        isActionDown = true;
-        isActionUp = false;
+        mode = DisplayMode.DOWN;
         if (this.patterListener != null) {
             this.patterListener.onPatternStart();
         }
@@ -444,7 +391,7 @@ public class LockPatternView extends View {
         if (cell != null) {
             addSelectedCell(cell);
         }
-        // this.setMode(DisplayMode.DEFAULT);
+        // this.setMode(DisplayMode.NORMAL);
         handleStealthMode();
         // handleHapticFeedback();
     }
@@ -460,7 +407,8 @@ public class LockPatternView extends View {
         for (Cell cell : sCells) {
             cell.setStatus(STATUS.STATE_CHECK_ERROR);
         }
-        postInvalidate();
+        mode = DisplayMode.ERROR;
+        invalidate();
     }
 
     /**
@@ -471,17 +419,13 @@ public class LockPatternView extends View {
      */
     private void handleActionMove(float ex, float ey) {
         mode = DisplayMode.MOVING;
-        isActionMove = true;
         movingX = ex;
         movingY = ey;
         Cell cell = checkSelectCell(ex, ey);
         if (cell != null) {
             addSelectedCell(cell);
-            // handleHapticFeedback();
         }
-        //this.setMode(DisplayMode.NORMAL);
         handleStealthMode();
-
     }
 
     /**
@@ -489,12 +433,8 @@ public class LockPatternView extends View {
      */
     private void handleActionUp() {
         // mode = DisplayMode.UP;
-        isActionMove = false;
-        isActionUp = true;
-        isActionDown = false;
         if (this.patterListener != null) {
             this.patterListener.onPatternComplete(sCells);
-            mode = DisplayMode.UP;
         }
     }
 
@@ -601,13 +541,14 @@ public class LockPatternView extends View {
      * the display mode of the pattern
      */
     public enum DisplayMode {
-        DEFAULT,
+        NORMAL,
         //show selected pattern error
+        DOWN,
         MOVING,
         //show default pattern (the default pattern is initialize status)
         UP,
-        //show selected pattern error
-        DISABLE;
+        SUCCESS,
+        ERROR,
     }
 
     /**
